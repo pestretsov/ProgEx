@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"></meta>
+		<script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+		<style type="text/css">
+			body {
+				text-align: center;
+			}
+
+			#dropZone {
+				max-width: 700px;
+				margin: 0 auto;
+				min-height: 100px;
+				overflow: auto;
+				border: dashed 2px #ccc;
+			}
+
+			.tile {
+				width: 100px;
+				height: 100px;
+				float: left;
+				padding: 5px;
+			}
+
+			.image-container {
+				border: solid 1px black;
+				width: 100%;
+				height: 100%;
+				position: relative;
+			}
+
+			.portrait {
+				height: 100%;
+			}
+
+			.landscape {
+				width: 100%;
+			}
+
+			.delete-button {
+				position: absolute;
+				top: 2px;
+				right: 2px;
+				cursor: pointer;
+			}
+
+			#fileInput {
+				display: none;
+			}
+		</style>
+	</head>
+	<body>
+		<div>
+			<div id="dropZone" ondragover="onDragOver(event)" ondrop="onDrop(event)"></div>
+			<button onclick="selectFiles()">Выберите файлы</button>
+			<input id="fileInput" onchange="processFiles(this.files)" type="file" multiple />
+		</div>
+		<script>
+			var currentFile = 0;
+			function deleteImage(e){
+				var element = $(e);
+				currentFile-=1;
+				console.log("REMOVE: " + element.data("uuid"));
+				$.ajax({
+					url: "rest/controller/delete/"+element.data("uuid"),
+					method: "DELETE"
+				});
+				element.closest(".tile").remove();
+			}
+
+			function selectFiles(){
+				$("#fileInput").trigger('click');
+			}
+
+			function onDragOver(e){
+				e.preventDefault();
+			}
+
+			function processFiles(files){
+				$.each(files, function(index, value){
+					var reader = new FileReader();
+
+					var formData = new FormData();
+					formData.append("file", value);
+                    reader.onload = function (e) {
+                        $.ajax({
+                            method: "POST",
+                        	url: "rest/controller/upload",
+                            data: formData,
+                            enctype: "multipart/form-data",
+                            processData: false,
+  							contentType: false
+                        }).done(function(data) {
+							var uuid = data[currentFile].fileId;
+							console.log(uuid);
+							var tile = $("<div class='tile'><div class='image-container'></div></div>");
+							$("#dropZone").append(tile);
+
+							var img = $("<img src='" + e.target.result + "'/>");
+
+								$(".image-container", tile)
+									.append(img)
+									.append("<span onClick='deleteImage(this)' data-uuid='" + uuid + "' class='delete-button'>X</span>");
+
+									img.addClass(img.width() / img.height() > 1 ? 'landscape' : 'portrait');
+
+							currentFile+=1;
+						});
+					}
+				reader.readAsDataURL(this);
+				});
+        	}
+
+			function onDrop(e){
+				e.preventDefault();
+
+				processFiles(e.dataTransfer.files);
+			}
+		</script>
+	</body>
+</html>
