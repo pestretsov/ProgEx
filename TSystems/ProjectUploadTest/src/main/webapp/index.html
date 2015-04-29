@@ -3,6 +3,9 @@
 	<head>
 		<meta charset="utf-8"></meta>
 		<script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+		<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+		<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
 		<style type="text/css">
 			body {
 				text-align: center;
@@ -80,35 +83,52 @@
 			function processFiles(files){
 				$.each(files, function(index, value){
 					var reader = new FileReader();
-
 					var formData = new FormData();
+					var gTile;
 					formData.append("file", value);
                     reader.onload = function (e) {
-                        $.ajax({
-                            method: "POST",
-                        	url: "rest/controller/upload",
-                            data: formData,
-                            enctype: "multipart/form-data",
-                            processData: false,
-  							contentType: false
-                        }).done(function(data) {
-							var uuid = data[currentFile].fileId;
-							console.log(uuid);
-							var tile = $("<div class='tile'><div class='image-container'></div></div>");
-							$("#dropZone").append(tile);
+						//var uuid = data[currentFile].fileId;
+						//console.log(uuid);
+						var tile = $("<div class='tile'><div class='image-container'></div></div>");
+						gTile = tile;
+						$("#dropZone").append(tile);
 
-							var img = $("<img src='" + e.target.result + "'/>");
+						var img = $("<img src='" + e.target.result + "'/>");
 
-								$(".image-container", tile)
-									.append(img)
-									.append("<span onClick='deleteImage(this)' data-uuid='" + uuid + "' class='delete-button'>X</span>");
-
-									img.addClass(img.width() / img.height() > 1 ? 'landscape' : 'portrait');
-
-							currentFile+=1;
-						});
+						$(".image-container", tile)
+							.append(img)
+							.append("<div class='progress' style='width:80px; height:10px'><div class='progress-bar' role='progressbar' aria-valuenow='' aria-valuemin='0' aria-valuemax='100' style='width:0%'></div></div>")
+							.append("<span onClick='deleteImage(this)' class='delete-button'>X</span>");
+							img.addClass(img.width() / img.height() > 1 ? 'landscape' : 'portrait');
 					}
-				reader.readAsDataURL(this);
+					$.ajax({
+						xhr: function() {
+							var xhr = new window.XMLHttpRequest();
+
+							xhr.upload.addEventListener("progress", function(evt){
+								if (evt.lengthComputable && $(".progress-bar", gTile).css("width")!="100%") {
+									var percentComplete = evt.loaded / evt.total;
+									console.log(percentComplete);
+									$(".progress-bar", gTile).css("aria-valuenow", percentComplete * 100);
+									$(".progress-bar", gTile).css("width", percentComplete * 100 + "%");
+								}
+							}, false);
+							return xhr;
+						},
+						method: "POST",
+						url: "rest/controller/upload",
+						data: formData,
+						enctype: "multipart/form-data",
+						processData: false,
+						contentType: false
+					}).done(function(data) {
+						var uuid = data[currentFile].fileId;
+						console.log(uuid);
+						$("span", gTile).attr("data-uuid", uuid);
+						currentFile+=1;
+					});
+					reader.readAsDataURL(this);
+
 				});
         	}
 
